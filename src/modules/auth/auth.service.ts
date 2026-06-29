@@ -1,62 +1,59 @@
 import {
-  ConflictException,
   Injectable,
+  ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
+import { UsersService } from '../users/users.service';
+import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwtSerivce: JwtService,
+    private usersService: UsersService,
+    private jwtService: JwtService,
   ) {}
 
-  public async register(registeDto: RegisterDto) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: registeDto.email },
-    });
+  async register(dto: RegisterDto) {
+    const existingUser = await this.usersService.findByEmail(dto.email);
 
     if (existingUser) {
-      throw new ConflictException('این ایمیل قبلا ثبت شده است');
+      throw new ConflictException('این ایمیل قبلاً ثبت شده است');
     }
-    const hashedPassword = await bcrypt.hash(registeDto.password, 12);
-    const user = await this.prisma.user.create({
-      data: {
-        email: registeDto.email,
-        password: hashedPassword,
-        name: registeDto.name,
-      },
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    const user = await this.usersService.create({
+      email: dto.email,
+      password: hashedPassword,
+      name: dto.name,
     });
+
     return this.generateToken(user.id, user.email);
   }
 
-  public async login(loginDto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: loginDto.email },
-    });
+  async login(dto: LoginDto) {
+    const user = await this.usersService.findByEmail(dto.email);
 
     if (!user) {
-      throw new UnauthorizedException('ایمیل یا رمز اشتباه است');
+      throw new UnauthorizedException('ایمیل یا پسورد اشتباه است');
     }
-    const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user?.password,
-    );
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('ایمیل یا رمز اشتباه است');
+
+    const passwordValid = await bcrypt.compare(dto.password, user.password);
+
+    if (!passwordValid) {
+      throw new UnauthorizedException('ایمیل یا پسورد اشتباه است');
     }
+
     return this.generateToken(user.id, user.email);
   }
 
-  private async generateToken(userId: number, email: string) {
+  private generateToken(userId: number, email: string) {
     const payload = { sub: userId, email };
     return {
-      access_token: this.jwtSerivce.sign(payload),
+      access_token: this.jwtService.sign(payload),
     };
   }
 }

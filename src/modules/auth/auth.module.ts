@@ -5,9 +5,11 @@ import { ConfigService } from '@nestjs/config';
 import { SignOptions } from 'jsonwebtoken';
 import { JwtStrategy } from './startegies/jwt.strategy';
 import { AuthController } from './auth.controller';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
+    UsersModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
