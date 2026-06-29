@@ -1,33 +1,33 @@
 # Task Manager API
 
-یک پروژه CRUD ساده با **NestJS** که شامل احراز هویت (Authentication) با JWT و اتصال به **PostgreSQL** از طریق **Prisma** است. این پروژه برای یادگیری پایه‌های NestJS، Auth و کار با دیتابیس ساخته شده.
+A simple CRUD project built with **NestJS**, featuring JWT-based authentication and a **PostgreSQL** database via **Prisma**. Built as a learning project to practice NestJS fundamentals, authentication, and database integration.
 
-## تکنولوژی‌های استفاده‌شده
+## Tech Stack
 
-- **NestJS** – فریمورک اصلی بک‌اند
-- **PostgreSQL** – دیتابیس (داخل Docker)
-- **Prisma (v6)** – ORM برای ارتباط با دیتابیس
-- **JWT** (`@nestjs/jwt`, `passport-jwt`) – احراز هویت
-- **bcrypt** – هش کردن پسورد
-- **class-validator** – اعتبارسنجی ورودی‌ها (DTO)
+- **NestJS** – main backend framework
+- **PostgreSQL** – database (running in Docker)
+- **Prisma (v6)** – ORM for database access
+- **JWT** (`@nestjs/jwt`, `passport-jwt`) – authentication
+- **bcrypt** – password hashing
+- **class-validator** – request validation (DTOs)
 
-## پیش‌نیازها
+## Prerequisites
 
-- Node.js (نسخه ۱۸ یا بالاتر)
-- Docker و Docker Compose
+- Node.js (v18 or higher)
+- Docker and Docker Compose
 - npm
 
-## نصب و راه‌اندازی
+## Setup
 
-### ۱. نصب پکیج‌ها
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
-### ۲. تنظیم متغیرهای محیطی
+### 2. Configure environment variables
 
-یک فایل `.env` در ریشه پروژه بساز:
+Create a `.env` file in the project root:
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5433/task_manager?schema=public"
@@ -36,29 +36,29 @@ JWT_EXPIRES_IN="1d"
 PORT=3000
 ```
 
-### ۳. بالا آوردن دیتابیس با Docker
+### 3. Start the database with Docker
 
 ```bash
 docker compose up -d
 ```
 
-> توجه: پورت دیتابیس روی `5433` تنظیم شده (نه ۵۴۳۲ پیش‌فرض) تا با نصب احتمالی Postgres روی خود سیستم تداخل نداشته باشد. این مقدار از طریق متغیر `PGPORT` در `docker-compose.yml` تنظیم می‌شود.
+> Note: the database port is set to `5433` (instead of the default `5432`) to avoid conflicts with a Postgres instance already installed on the host machine. This is configured via the `PGPORT` environment variable in `docker-compose.yml`.
 
-### ۴. اجرای Migration
+### 4. Run the migration
 
 ```bash
 npx prisma migrate dev --name init
 ```
 
-### ۵. اجرای پروژه
+### 5. Start the project
 
 ```bash
 npm run start:dev
 ```
 
-سرور روی آدرس `http://localhost:3000` بالا می‌آید.
+The server starts at `http://localhost:3000`.
 
-## ساختار پوشه‌ها
+## Folder Structure
 
 ```
 task-manager-api/
@@ -92,24 +92,24 @@ task-manager-api/
 └── .env
 ```
 
-## مدل‌های دیتابیس
+## Database Models
 
-- **User**: `id`, `email`, `password` (هش‌شده), `name`, `tasks[]`
-- **Task**: `id`, `title`, `description`, `completed`, `userId` (مالک تسک)
+- **User**: `id`, `email`, `password` (hashed), `name`, `tasks[]`
+- **Task**: `id`, `title`, `description`, `completed`, `userId` (owner)
 
-هر کاربر فقط به تسک‌های خودش دسترسی دارد (در سطح Service چک می‌شود).
+Each user can only access their own tasks (enforced at the service layer).
 
-## مستندات API
+## API Reference
 
 ### Auth
 
-| متد | مسیر | نیاز به توکن | توضیح |
+| Method | Endpoint | Auth required | Description |
 |---|---|---|---|
-| POST | `/auth/register` | ❌ | ثبت‌نام کاربر جدید |
-| POST | `/auth/login` | ❌ | ورود و گرفتن توکن |
-| GET | `/auth/profile` | ✅ | گرفتن اطلاعات کاربر لاگین‌شده |
+| POST | `/auth/register` | ❌ | Register a new user |
+| POST | `/auth/login` | ❌ | Log in and receive a token |
+| GET | `/auth/profile` | ✅ | Get the logged-in user's info |
 
-**نمونه ثبت‌نام:**
+**Register example:**
 
 ```bash
 curl -X POST http://localhost:3000/auth/register \
@@ -117,7 +117,7 @@ curl -X POST http://localhost:3000/auth/register \
   -d '{"email":"test@example.com","password":"123456","name":"Test User"}'
 ```
 
-**نمونه ورود:**
+**Login example:**
 
 ```bash
 curl -X POST http://localhost:3000/auth/login \
@@ -125,7 +125,7 @@ curl -X POST http://localhost:3000/auth/login \
   -d '{"email":"test@example.com","password":"123456"}'
 ```
 
-پاسخ هر دو شامل `access_token` است که باید در درخواست‌های بعدی به‌صورت زیر ارسال شود:
+Both responses include an `access_token`, which must be sent on subsequent requests as:
 
 ```
 Authorization: Bearer <access_token>
@@ -133,26 +133,26 @@ Authorization: Bearer <access_token>
 
 ### Tasks
 
-تمام مسیرهای زیر نیاز به توکن معتبر دارند.
+All routes below require a valid token.
 
-| متد | مسیر | توضیح |
+| Method | Endpoint | Description |
 |---|---|---|
-| POST | `/tasks` | ساخت تسک جدید |
-| GET | `/tasks` | لیست تسک‌های کاربر فعلی |
-| GET | `/tasks/:id` | گرفتن یک تسک خاص |
-| PATCH | `/tasks/:id` | ویرایش تسک |
-| DELETE | `/tasks/:id` | حذف تسک |
+| POST | `/tasks` | Create a new task |
+| GET | `/tasks` | List the current user's tasks |
+| GET | `/tasks/:id` | Get a specific task |
+| PATCH | `/tasks/:id` | Update a task |
+| DELETE | `/tasks/:id` | Delete a task |
 
-**نمونه ساخت تسک:**
+**Create task example:**
 
 ```bash
 curl -X POST http://localhost:3000/tasks \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"title":"یادگیری Nest","description":"تمرین CRUD و Auth"}'
+  -d '{"title":"Learn Nest","description":"Practice CRUD and Auth"}'
 ```
 
-**نمونه آپدیت تسک:**
+**Update task example:**
 
 ```bash
 curl -X PATCH http://localhost:3000/tasks/1 \
@@ -161,17 +161,17 @@ curl -X PATCH http://localhost:3000/tasks/1 \
   -d '{"completed":true}'
 ```
 
-## دستورهای مفید Docker
+## Useful Docker Commands
 
 ```bash
-docker compose up -d              # بالا آوردن دیتابیس
-docker compose down -v            # پایین آوردن + حذف دیتا
-docker compose logs -f postgres   # دیدن لاگ‌های زنده
-npx prisma studio                 # دیدن دیتابیس به‌صورت گرافیکی
+docker compose up -d              # start the database
+docker compose down -v            # stop and remove all data
+docker compose logs -f postgres   # follow live logs
+npx prisma studio                 # view the database in a GUI
 ```
 
-## نکات معماری
+## Architecture Notes
 
-- ساختار پروژه بر اساس الگوی **Feature-based Module** است: هر قابلیت (auth, tasks) ماژول جدای خودش را دارد، و موارد زیرساختی مشترک (prisma, common) بیرون از `modules/` قرار دارند.
-- `PrismaModule` به‌صورت `@Global()` تعریف شده تا نیازی به import تکراری در هر ماژول نباشد.
-- منطق اصلی همیشه در `Service` نوشته می‌شود؛ `Controller` فقط مسئول گرفتن/برگرداندن request است.
+- The project follows a **feature-based module** pattern: each feature (auth, tasks) owns its own module, while shared infrastructure (prisma, common) lives outside `modules/`.
+- `PrismaModule` is marked `@Global()` so it doesn't need to be re-imported into every feature module.
+- Business logic always lives in the `Service`; the `Controller` is only responsible for handling the request/response.
