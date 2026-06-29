@@ -1,26 +1,64 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class TasksService {
-  create(createTaskDto: CreateTaskDto) {
-    return 'This action adds a new task';
+  constructor(private prisma: PrismaService) {}
+
+  public create(userId: number, createTaskDto: CreateTaskDto) {
+    return this.prisma.task.create({
+      data: {
+        ...createTaskDto,
+        userId,
+      },
+    });
   }
 
-  findAll() {
-    return `This action returns all tasks`;
+  public findAll(userId: number) {
+    return this.prisma.task.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} task`;
+  public async findOne(userId: number, id: number) {
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+    });
+
+    if (!task) {
+      throw new NotFoundException('تسک پیدا نشد');
+    }
+
+    if (task.userId !== userId) {
+      throw new ForbiddenException('شما اجازه دسترسی به این تسک را ندارید');
+    }
+
+    return task;
   }
 
-  update(id: number, updateTaskDto: UpdateTaskDto) {
-    return `This action updates a #${id} task`;
+  public async update(
+    userId: number,
+    id: number,
+    updateTaskDto: UpdateTaskDto,
+  ) {
+    await this.findOne(userId, id);
+
+    return this.prisma.task.update({
+      where: { id },
+      data: updateTaskDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} task`;
+  async remove(userId: number, id: number) {
+    await this.findOne(userId, id);
+
+    return this.prisma.task.delete({ where: { id } });
   }
 }
